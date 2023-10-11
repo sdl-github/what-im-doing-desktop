@@ -44,7 +44,7 @@
         "height": 400,
         "resizable": false,
         "title": "menubar",
-        "width": 500,
+        "width": 300,
         "visible": false,
         "hiddenTitle": true,
         "decorations": false,

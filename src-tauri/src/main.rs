@@ -1,22 +1,82 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use std::{ process::Command};
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
+
+use std::process::Command;
 use tauri::{
-    CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem,
+    Manager, SystemTray, SystemTrayEvent, SystemTrayMenu
 };
+use tauri_plugin_positioner::{Position, WindowExt};
 
 fn main() {
-    let quit = CustomMenuItem::new("quit".to_string(), "关闭窗口");
-    let hide = CustomMenuItem::new("hide".to_string(), "隐藏窗口");
-    let tray_menu = SystemTrayMenu::new()
-        .add_item(quit)
-        .add_native_item(SystemTrayMenuItem::Separator)
-        .add_item(hide);
-    let system_tray = SystemTray::new().with_menu(tray_menu);
-
+    let system_tray_menu = SystemTrayMenu::new();
     tauri::Builder::default()
-        .system_tray(system_tray)
-        .on_system_tray_event(|app, event| menu_handle(app, event))
+        .plugin(tauri_plugin_positioner::init())
+        .system_tray(SystemTray::new().with_menu(system_tray_menu))
+        .on_system_tray_event(|app, event| {
+            tauri_plugin_positioner::on_tray_event(app, &event);
+            match event {
+                SystemTrayEvent::LeftClick {
+                    position: _,
+                    size: _,
+                    ..
+                } => {
+                    let window = app.get_window("main").unwrap();
+                    let _ = window.move_window(Position::TrayCenter);
+
+                    if window.is_visible().unwrap() {
+                        window.hide().unwrap();
+                    } else {
+                        window.show().unwrap();
+                        window.set_focus().unwrap();
+                    }
+                }
+                SystemTrayEvent::RightClick {
+                    position: _,
+                    size: _,
+                    ..
+                } => {
+                    let window = app.get_window("main").unwrap();
+                    let _ = window.move_window(Position::TrayCenter);
+
+                    if window.is_visible().unwrap() {
+                        window.hide().unwrap();
+                    } else {
+                        window.show().unwrap();
+                        window.set_focus().unwrap();
+                    }
+                }
+                SystemTrayEvent::DoubleClick {
+                    position: _,
+                    size: _,
+                    ..
+                } => {
+                    println!("system tray received a double click");
+                }
+                SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
+                    "quit" => {
+                        std::process::exit(0);
+                    }
+                    "hide" => {
+                        let window = app.get_window("main").unwrap();
+                        window.hide().unwrap();
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        })
+        .on_window_event(|event| match event.event() {
+            tauri::WindowEvent::Focused(is_focused) => {
+                // detect click outside of the focused window and hide the app
+                // if !is_focused {
+                //     event.window().hide().unwrap();
+                // }
+            }
+            _ => {}
+        })
         .invoke_handler(tauri::generate_handler![scan_apps, get_focused_app])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -104,8 +164,6 @@ fn get_focused_app() -> Result<String, String> {
     }
 }
 
-
-
 fn extract_name(path: &str) -> &str {
     // 首先根据 macOS 的路径分隔符 "/" 分割字符串
     let parts: Vec<&str> = path.split('/').collect();
@@ -118,54 +176,10 @@ fn extract_name(path: &str) -> &str {
             // 返回索引前面的部分作为名称
             let name = parts[i];
             name
-        },
+        }
         None => {
             // 如果没有找到 ".app" 后缀，则返回整个路径
             path
-        },
-    }
-}
-
-fn menu_handle(app_handle: &tauri::AppHandle, event: SystemTrayEvent) {
-    match event {
-        SystemTrayEvent::LeftClick {
-            position: _,
-            size: _,
-            ..
-        } => {
-            println!("鼠标-左击");
         }
-        SystemTrayEvent::RightClick {
-            position: _,
-            size: _,
-            ..
-        } => {
-            println!("鼠标-右击");
-        }
-        SystemTrayEvent::DoubleClick {
-            position: _,
-            size: _,
-            ..
-        } => {
-            println!("鼠标-双击");
-        }
-        SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
-            "quit" => {
-                std::process::exit(0);
-            }
-            "hide" => {
-                let item_handle = app_handle.tray_handle().get_item(&id);
-                let window = app_handle.get_window("home").unwrap();
-                if window.is_visible().unwrap() {
-                    window.hide().unwrap();
-                    item_handle.set_title("显示窗口").unwrap();
-                } else {
-                    window.show().unwrap();
-                    item_handle.set_title("隐藏窗口").unwrap();
-                }
-            }
-            _ => {}
-        },
-        _ => {}
     }
 }
