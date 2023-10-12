@@ -24,7 +24,8 @@ fn main() {
                     ..
                 } => {
                     let window = app.get_window("main").unwrap();
-                    let _ = window.move_window(Position::TrayCenter);
+                    // let _ = window.move_window(Position::TrayCenter);
+                    let _ = window.move_window(Position::TopLeft);
 
                     if window.is_visible().unwrap() {
                         window.hide().unwrap();
