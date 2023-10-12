@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import "./App.css";
 import { Button, Spin, Switch } from '@douyinfe/semi-ui';
+import { asyncApp } from "./api";
 
 type Data = {
   appName: string;
@@ -9,19 +10,22 @@ type Data = {
 };
 
 function App() {
+
+  const [username, setUsername] = useState<string>('')
+  const [serialNo, setSerialNo] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
   const [data, setData] = useState<Data[]>([]);
   const [current, setCurrent] = useState<string>("");
   const [start, setStart] = useState<boolean>(false)
 
   useEffect(() => {
+    init()
     // setInterval(() => {
     //   console.log("查询");
     //   invoke("get_focused_app").then((res) => {
     //     setCurrent(res as string);
     //   });
     // }, 10000);
-
     invoke("scan_apps").then((res) => {
       console.log(res);
       setData(
@@ -36,12 +40,24 @@ function App() {
     setStart(checked)
   }
 
+  async function init() {
+    const serialNo:string = await invoke('get_serial_number')
+    setSerialNo(serialNo)
+    const username:string = await invoke('get_user_name')
+    setUsername(username)
+    const apps: string[] = await invoke("scan_apps")
+    const app_list = apps.map((appName) => {
+      return { appName, showName: appName, serialNo };
+    })
+    await asyncApp(app_list)
+  }
+
   return (
     <Spin spinning={loading}>
       <div className="p-4">
         <div>
-          <span className="font-bold">我的MacBook Pro</span>
-          <Button className="text-12px ml-2" theme='borderless' type='secondary'>修改</Button>
+          <span className="font-bold">{username}</span>
+          <Button className="text-12px ml-1" theme='borderless' type='secondary'>修改</Button>
         </div>
         <div className="flex mt-1 items-center">
           <span className="text-12px">开启同步</span>
@@ -90,6 +106,9 @@ function App() {
               </>
             )
         }
+        <div className="text-12px hover:color-#0064FA cursor-pointer">
+          {serialNo}
+        </div>
       </div>
     </Spin>
   );

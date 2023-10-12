@@ -4,12 +4,10 @@
     windows_subsystem = "windows"
 )]
 
-use std::process::Command;
-use tauri::{
-    Manager, SystemTray, SystemTrayEvent, SystemTrayMenu
-};
+use std::process::{Command, Stdio};
+use tauri::{Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
 use tauri_plugin_positioner::{Position, WindowExt};
-
+use whoami;
 fn main() {
     let system_tray_menu = SystemTrayMenu::new();
     tauri::Builder::default()
@@ -24,8 +22,7 @@ fn main() {
                     ..
                 } => {
                     let window = app.get_window("main").unwrap();
-                    // let _ = window.move_window(Position::TrayCenter);
-                    let _ = window.move_window(Position::TopLeft);
+                    let _ = window.move_window(Position::TrayCenter);
 
                     if window.is_visible().unwrap() {
                         window.hide().unwrap();
@@ -72,13 +69,18 @@ fn main() {
         .on_window_event(|event| match event.event() {
             tauri::WindowEvent::Focused(is_focused) => {
                 // detect click outside of the focused window and hide the app
-                // if !is_focused {
-                //     event.window().hide().unwrap();
-                // }
+                if !is_focused {
+                    event.window().hide().unwrap();
+                }
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![scan_apps, get_focused_app])
+        .invoke_handler(tauri::generate_handler![
+            scan_apps,
+            get_focused_app,
+            get_serial_number,
+            get_user_name
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -163,6 +165,25 @@ fn get_focused_app() -> Result<String, String> {
     } else {
         Err("Failed to get focused app.".to_string())
     }
+}
+
+#[tauri::command]
+fn get_serial_number() -> Result<String, String> {
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg("system_profiler SPHardwareDataType | awk '/Serial Number/ {print $4}'")
+        .stdout(Stdio::piped())
+        .output()
+        .expect("Failed to execute command");
+    let output_string = String::from_utf8_lossy(&output.stdout);
+    let serial_number = output_string.trim();
+    Ok(serial_number.to_string())
+}
+
+#[tauri::command]
+fn get_user_name() -> Result<String, String> {
+    let username = whoami::username();
+    Ok(username)
 }
 
 fn extract_name(path: &str) -> &str {
