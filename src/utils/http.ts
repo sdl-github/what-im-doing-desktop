@@ -1,7 +1,8 @@
 import { FetchOptions, fetch } from '@tauri-apps/api/http'
 import qs from 'qs'
 
-const baseURL = `https://whatimdoing.viewcode.online/api`
+export const server_url = 'https://whatimdoing.viewcode.online'
+const baseURL = `${server_url}/api`
 
 const BODY_TYPE = {
     Form: 'Form',

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
+import { open } from '@tauri-apps/api/shell';
 import "./App.css";
-import { Button, Spin, Switch } from "@douyinfe/semi-ui";
+import { Button, Spin, Switch, Tooltip, Typography } from "@douyinfe/semi-ui";
 import { asyncApp, newActivity, registerDevice } from "./api";
 import { timeAgo } from "./utils";
+import { server_url } from "./utils/http";
 
 type App = {
   serialNo?: string;
@@ -156,9 +158,16 @@ function App() {
             </div>
           </>
         )}
-        <div className="text-12px hover:color-#0064FA cursor-pointer">
-          {serialNo}
-        </div>
+
+        <Tooltip content="点击查看">
+          <Typography.Text
+            onClick={async () =>
+              await open(`${server_url}/activity/${serialNo}`)
+            }
+          >
+            {serialNo}
+          </Typography.Text>
+        </Tooltip>
       </div>
     </Spin>
   );
